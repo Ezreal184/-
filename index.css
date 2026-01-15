@@ -36,6 +36,31 @@
   z-index: 1;
 }
 
+/* Particle Point Animation for AtmosphericOverlay */
+.particle-point {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  animation: particleFloat linear infinite;
+}
+
+@keyframes particleFloat {
+  0% {
+    transform: translateY(100vh) rotate(0deg);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-10px) rotate(360deg);
+    opacity: 0;
+  }
+}
+
 @keyframes snow {
   0% {
     transform: translateY(-10px) rotate(0deg);
@@ -55,6 +80,37 @@
 
 .animate-snow {
   animation: snow linear infinite;
+}
+
+/* Glass Premium Effect */
+.glass-premium {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Magnetic Button Effect */
+.magnetic-btn {
+  transition: all 0.3s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.magnetic-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+}
+
+/* Reveal on Scroll Animation */
+.reveal-on-scroll {
+  opacity: 0;
+  transform: translateY(30px);
+  animation: revealOnScroll 0.8s ease-out forwards;
+}
+
+@keyframes revealOnScroll {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* Laser Scan Animation for Equipment View */

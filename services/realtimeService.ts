@@ -109,6 +109,84 @@ export function subscribeToFeed(
 }
 
 /**
+ * 订阅聊天消息
+ */
+export function subscribeToChatMessages(
+  contactId: string,
+  callback: (message: any) => void
+): RealtimeChannel {
+  const channel = supabase
+    .channel(`chat:${contactId}`)
+    .on(
+      'postgres_changes',
+      {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'messages',
+        filter: `contact_id=eq.${contactId}`,
+      },
+      (payload) => {
+        callback(payload.new);
+      }
+    )
+    .subscribe();
+
+  return channel;
+}
+
+/**
+ * 订阅联系人状态更新
+ */
+export function subscribeToContactStatus(
+  userId: string,
+  callback: (contact: any) => void
+): RealtimeChannel {
+  const channel = supabase
+    .channel(`contacts:${userId}`)
+    .on(
+      'postgres_changes',
+      {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'chat_contacts',
+        filter: `user_id=eq.${userId}`,
+      },
+      (payload) => {
+        callback(payload.new);
+      }
+    )
+    .subscribe();
+
+  return channel;
+}
+
+/**
+ * 订阅评论点赞更新
+ */
+export function subscribeToCommentLikes(
+  commentId: string,
+  callback: (comment: any) => void
+): RealtimeChannel {
+  const channel = supabase
+    .channel(`comment_likes:${commentId}`)
+    .on(
+      'postgres_changes',
+      {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'comments',
+        filter: `id=eq.${commentId}`,
+      },
+      (payload) => {
+        callback(payload.new);
+      }
+    )
+    .subscribe();
+
+  return channel;
+}
+
+/**
  * 取消订阅频道
  */
 export function unsubscribe(channel: RealtimeChannel): void {

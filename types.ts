@@ -1,4 +1,3 @@
-
 export interface Post {
   id: string;
   title: string;
@@ -25,4 +24,33 @@ export enum TabType {
   POSTS = 'posts',
   TRAILS = 'trails',
   GEAR = 'gear'
+}
+
+export interface Message {
+  id: string;
+  senderId: string;
+  text: string;
+  timestamp: string;
+  isAI?: boolean;
+}
+
+export interface ChatContact {
+  id: string;
+  name: string;
+  avatar: string;
+  lastMessage: string;
+  status: 'online' | 'offline' | 'climbing';
+  isAI?: boolean;
+}
+export interface Comment {
+  id: string;
+  userId: string;
+  userName: string;
+  userAvatar: string;
+  postId: string;
+  parentId?: string;
+  content: string;
+  likesCount: number;
+  createdAt: string;
+  replies?: Comment[];
 }

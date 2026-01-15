@@ -94,3 +94,17 @@ export const generateProfileSummary = async (stats: any) => {
     return "在世界上最具挑战性的峰峦间不断突破极限。";
   }
 };
+
+export const getGeminiResponse = async (prompt: string) => {
+  try {
+    const ai = getClient();
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: prompt,
+    });
+    return response.text;
+  } catch (error) {
+    console.error("Gemini Error:", error);
+    throw error;
+  }
+};

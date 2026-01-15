@@ -1,155 +1,165 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { getGearRecommendations } from '../services/geminiService';
-
-interface Equipment {
-  id: number;
-  name: string;
-  brand: string;
-  price: string;
-  category: string;
-  image: string;
-  description?: string;
-  gallery?: string[];
-  reviews?: { user: string; rating: number; comment: string }[];
-}
-
-const MOCK_EQUIPMENT: Equipment[] = [
-  { 
-    id: 1, 
-    name: "Apex 超轻型冰镐", 
-    brand: "Alpine Forge", 
-    price: "¥2,099", 
-    category: "五金", 
-    image: "https://picsum.photos/800/800?random=50",
-    description: "专为极致攀冰和技术型混合路线设计。Apex 采用航空级铝材手柄与精钢镐头，平衡性卓越，在硬冰中具有极强的穿透力。",
-    gallery: [
-      "https://picsum.photos/800/800?random=50",
-      "https://picsum.photos/800/800?random=150",
-      "https://picsum.photos/800/800?random=250"
-    ],
-    reviews: [
-      { user: "Li Wei", rating: 5, comment: "手感极佳，重量分配非常科学。" },
-      { user: "Sarah J.", rating: 4, comment: "鎬尖非常锋利，但在极寒环境下把手握感略显生硬。" }
-    ]
-  },
-  { 
-    id: 2, 
-    name: "Summit 硬壳夹克 V4", 
-    brand: "Peak Performance", 
-    price: "¥3,849", 
-    category: "服装", 
-    image: "https://picsum.photos/800/800?random=51",
-    description: "全天候保护。采用三层 GORE-TEX Pro 面料，提供顶级的防水透气性能。专为阿尔卑斯式登山设计的剪裁，不影响任何攀爬动作。",
-    gallery: [
-      "https://picsum.photos/800/800?random=51",
-      "https://picsum.photos/800/800?random=151",
-      "https://picsum.photos/800/800?random=251"
-    ],
-    reviews: [
-      { user: "Alex S.", rating: 5, comment: "在暴风雪中救了我一命，完全不透水。" }
-    ]
-  },
-  { id: 3, name: "钛合金冰爪 X-Pro", brand: "GripMaster", price: "¥1,289", category: "五金", image: "https://picsum.photos/400/400?random=52" },
-  { id: 4, name: "Oxygen 系统 Mini-Flow", brand: "SkyBreath", price: "¥8,500", category: "安全", image: "https://picsum.photos/400/400?random=53" },
-  { id: 5, name: "太阳能充电远征背包", brand: "VoltTrail", price: "¥2,340", category: "背包", image: "https://picsum.photos/400/400?random=54" },
-  { id: 6, name: "GORE-TEX 保暖手套", brand: "FrostBane", price: "¥895", category: "服装", image: "https://picsum.photos/400/400?random=55" }
-];
+import { getEquipment, addToCart } from '../services/equipmentService';
+import type { Equipment } from '../types/database';
 
 const EquipmentView: React.FC<{ onNavigate: (view: any) => void; onAuthRequired: () => void; isLoggedIn: boolean }> = ({ onNavigate, onAuthRequired, isLoggedIn }) => {
   const [objective, setObjective] = useState('');
   const [recommendations, setRecommendations] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [activeFilter, setActiveFilter] = useState('全部');
-  const [selectedGear, setSelectedGear] = useState<Equipment | null>(null);
-  const [activeGalleryIndex, setActiveGalleryIndex] = useState(0);
+  const [activeFilter, setActiveFilter] = useState('All');
+  const [equipment, setEquipment] = useState<Equipment[]>([]);
+  const [equipmentLoading, setEquipmentLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // 加载装备数据
+  useEffect(() => {
+    loadEquipment();
+  }, [activeFilter]);
+
+  const loadEquipment = async () => {
+    try {
+      setEquipmentLoading(true);
+      setError(null);
+      const category = activeFilter === 'All' ? undefined : getCategoryMapping(activeFilter);
+      const data = await getEquipment(category);
+      setEquipment(data);
+    } catch (err) {
+      console.error('加载装备失败:', err);
+      setError('加载装备失败，请稍后重试');
+    } finally {
+      setEquipmentLoading(false);
+    }
+  };
+
+  // 映射UI分类到数据库分类
+  const getCategoryMapping = (uiCategory: string): string => {
+    const mapping: { [key: string]: string } = {
+      'Hardware': '五金',
+      'Apparel': '服装', 
+      'Safety': '安全',
+      'Packs': '背包'
+    };
+    return mapping[uiCategory] || uiCategory;
+  };
+
+  // 格式化价格显示
+  const formatPrice = (price: number) => `¥${price.toLocaleString()}`;
 
   const handleGetRecs = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isLoggedIn) {
-      onAuthRequired();
-      return;
-    }
+    if (!isLoggedIn) return onAuthRequired();
     if (!objective) return;
     setLoading(true);
-    const recs = await getGearRecommendations(objective);
-    setRecommendations(recs);
-    setLoading(false);
+    try {
+      const recs = await getGearRecommendations(objective);
+      setRecommendations(recs);
+    } catch (error) {
+      console.error('获取推荐失败:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const addToCart = (e: React.MouseEvent, id: number) => {
-    e.stopPropagation();
+  const handleAddToCart = async (equipmentId: string) => {
     if (!isLoggedIn) {
       onAuthRequired();
       return;
     }
-    const btn = document.getElementById(`cart-btn-${id}`);
-    if (btn) {
-      const originalContent = btn.innerHTML;
-      btn.innerHTML = '<span class="material-symbols-outlined">check</span>';
-      setTimeout(() => { if (btn) btn.innerHTML = originalContent; }, 1500);
+    
+    try {
+      await addToCart(equipmentId);
+      // 显示成功反馈
+      const btn = document.getElementById(`cart-btn-${equipmentId}`);
+      if (btn) {
+        const originalContent = btn.innerHTML;
+        btn.innerHTML = '<span class="material-symbols-outlined">check</span>';
+        setTimeout(() => { if (btn) btn.innerHTML = originalContent; }, 1500);
+      }
+    } catch (err) {
+      console.error('添加到购物车失败:', err);
     }
   };
 
-  const openGearDetail = (item: Equipment) => {
-    setSelectedGear(item);
-    setActiveGalleryIndex(0);
-  };
+  const categories = ['All', 'Hardware', 'Apparel', 'Safety', 'Packs'];
 
-  const categories = ['全部', '五金', '服装', '安全', '背包'];
-  const filteredGear = activeFilter === '全部' ? MOCK_EQUIPMENT : MOCK_EQUIPMENT.filter(item => item.category === activeFilter);
+  if (equipmentLoading) {
+    return (
+      <div className="relative py-40 px-6 lg:px-24 max-w-[1800px] mx-auto z-10 flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent mx-auto mb-4"></div>
+          <p className="text-zinc-400">加载装备中...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="relative py-40 px-6 lg:px-24 max-w-[1800px] mx-auto z-10 flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <p className="text-red-400 mb-4">{error}</p>
+          <button 
+            onClick={loadEquipment}
+            className="bg-accent text-black px-6 py-2 rounded-lg hover:bg-cyan-300 transition-colors"
+          >
+            重试
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="tech-grid min-h-screen">
-      <div className="max-w-[1200px] mx-auto px-6 lg:px-20 py-16">
+    <div className="relative py-40 px-6 lg:px-24 max-w-[1800px] mx-auto z-10 space-y-48">
+      
+      {/* AI 分析区 - 无边界卡片 */}
+      <div className="reveal-on-scroll relative group">
+        <div className="absolute -inset-20 bg-accent/5 blur-[120px] rounded-full pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-[2s]" />
         
-        {/* AI 推荐区域 - 增加激光扫描动效 */}
-        <div className="bg-zinc-950 rounded-[3rem] p-10 lg:p-16 mb-20 relative overflow-hidden shadow-[0_50px_100px_rgba(0,0,0,0.3)] group">
-          {/* 激光扫描线动画 */}
-          <div className="absolute inset-x-0 h-px bg-gradient-to-r from-transparent via-cyan-400 to-transparent opacity-0 group-hover:opacity-100 group-hover:animate-scan z-20 shadow-[0_0_15px_rgba(34,211,238,0.5)]"></div>
+        <div className="max-w-4xl">
+          <p className="text-accent text-[10px] font-black uppercase tracking-[1em] mb-12">System Intelligence / Gear</p>
+          <h2 className="text-7xl lg:text-[10rem] font-black font-display italic uppercase tracking-tighter leading-[0.85] mb-20">
+            PRO <br/> <span className="text-white/10">SOLUTIONS</span>
+          </h2>
           
-          <div className="relative z-10 max-w-3xl">
-            <div className="flex items-center gap-3 text-cyan-400 mb-6">
-              <span className="material-symbols-outlined animate-pulse">query_stats</span>
-              <span className="font-black tracking-[0.4em] text-[10px] uppercase">Gear Intelligence Advisor</span>
+          <form onSubmit={handleGetRecs} className="relative flex flex-col md:flex-row gap-6 mb-20">
+            <input 
+              value={objective}
+              onChange={(e) => setObjective(e.target.value)}
+              placeholder="Describe your next peak objective..."
+              className="flex-1 bg-transparent border-b-2 border-white/10 px-0 py-6 focus:border-accent outline-none transition-all text-2xl font-light placeholder:text-zinc-700"
+            />
+            <button type="submit" disabled={loading} className="magnetic-btn px-16 py-6 bg-white text-black text-[10px] font-black uppercase tracking-widest disabled:opacity-50">
+              {loading ? 'Synthesizing...' : 'Generate Plan'}
+            </button>
+          </form>
+
+          {recommendations && (
+            <div className="reveal-on-scroll glass-premium p-12 rounded-[3rem] animate-in slide-in-from-bottom-8 duration-1000">
+               <div className="flex items-center gap-4 mb-10">
+                 <div className="size-3 bg-accent rounded-full animate-pulse" />
+                 <span className="text-[10px] font-black uppercase tracking-widest text-accent">Optimized Loadout Configuration</span>
+               </div>
+               <p className="text-2xl text-zinc-300 leading-relaxed font-light italic">{recommendations}</p>
             </div>
-            <h2 className="text-4xl lg:text-6xl font-black font-display mb-10 text-white italic leading-tight">远征方案智能生成</h2>
-            <form onSubmit={handleGetRecs} className="flex flex-col md:flex-row gap-4">
-              <input 
-                value={objective}
-                onChange={(e) => setObjective(e.target.value)}
-                placeholder="描述您的攀登目标，如：'勃朗峰 3日 快速攀登'..."
-                className="flex-1 bg-white/5 border border-white/10 rounded-2xl px-8 py-5 focus:ring-2 focus:ring-cyan-400 focus:bg-white/10 outline-none transition-all placeholder:text-white/20 text-white text-lg"
-              />
-              <button type="submit" disabled={loading} className="bg-white text-black px-12 rounded-2xl font-black text-[10px] uppercase tracking-[0.3em] hover:bg-cyan-400 transition-all active:scale-95 shadow-xl shadow-white/10">
-                {loading ? '计算中...' : '生成清单'}
-              </button>
-            </form>
-            
-            {recommendations && (
-              <div className="mt-12 bg-white/5 backdrop-blur-3xl border border-white/10 p-8 rounded-3xl animate-in zoom-in-95 duration-500 relative">
-                <div className="absolute top-4 right-4 text-[8px] font-black uppercase text-white/20 tracking-widest">Optimized Output</div>
-                <p className="text-zinc-300 text-base leading-relaxed whitespace-pre-wrap font-medium">{recommendations}</p>
-              </div>
-            )}
-          </div>
-
-          <div className="absolute -bottom-20 -right-20 opacity-5 group-hover:opacity-10 transition-opacity">
-            <span className="material-symbols-outlined text-[20rem]">precision_manufacturing</span>
-          </div>
+          )}
         </div>
+      </div>
 
-        {/* 目录筛选 */}
-        <div className="flex flex-col md:flex-row items-center justify-between mb-16 gap-8">
+      {/* 目录区域 */}
+      <div className="space-y-32">
+        <div className="flex flex-col lg:flex-row items-end justify-between reveal-on-scroll">
           <div>
-            <h2 className="text-4xl font-black font-display uppercase tracking-tighter dark:text-white italic">Technical Catalog</h2>
-            <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-[0.5em] mt-2">Professional Alpine Equipment</p>
+            <h3 className="text-5xl font-black font-display uppercase italic tracking-tighter">The Vault</h3>
+            <p className="text-[10px] font-bold text-zinc-600 uppercase tracking-[0.8em] mt-6">Hardware & Protection</p>
           </div>
-          <div className="flex gap-2 bg-zinc-100 dark:bg-zinc-900/50 p-2 rounded-2xl backdrop-blur-sm">
+          <div className="mt-12 lg:mt-0 flex gap-4 overflow-x-auto no-scrollbar pb-2">
             {categories.map(cat => (
               <button 
                 key={cat} 
                 onClick={() => setActiveFilter(cat)} 
-                className={`px-6 py-2.5 rounded-xl text-[10px] font-black tracking-widest uppercase transition-all whitespace-nowrap ${activeFilter === cat ? 'bg-primary dark:bg-white text-white dark:text-black shadow-lg' : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-300'}`}
+                className={`px-10 py-4 rounded-full text-[9px] font-black tracking-widest uppercase transition-all whitespace-nowrap ${activeFilter === cat ? 'bg-white text-black' : 'text-zinc-500 hover:text-white border border-white/5'}`}
               >
                 {cat}
               </button>
@@ -157,32 +167,45 @@ const EquipmentView: React.FC<{ onNavigate: (view: any) => void; onAuthRequired:
           </div>
         </div>
 
-        {/* 装备网格 */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10">
-          {filteredGear.map((item) => (
-            <div 
-              key={item.id} 
-              onClick={() => openGearDetail(item)}
-              className="group bg-white/60 dark:bg-zinc-900/40 backdrop-blur-xl rounded-[2.5rem] border border-white/50 dark:border-zinc-800 p-6 hover:shadow-2xl hover:-translate-y-3 transition-all duration-700 cursor-pointer"
-            >
-              <div className="relative aspect-square overflow-hidden bg-zinc-50 dark:bg-zinc-800 rounded-[2rem] mb-8 border border-zinc-100 dark:border-zinc-800">
-                <img src={item.image} alt={item.name} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"/>
-                <div className="absolute top-5 left-5 bg-zinc-950/80 backdrop-blur-md px-4 py-1.5 rounded-full text-[9px] font-black tracking-[0.2em] uppercase text-white">{item.category}</div>
-              </div>
-              <p className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.4em] mb-2">{item.brand}</p>
-              <h3 className="font-black text-2xl text-zinc-900 dark:text-white mb-6 group-hover:text-primary dark:group-hover:text-zinc-300 transition-colors tracking-tight">{item.name}</h3>
-              <div className="flex items-center justify-between border-t border-zinc-50 dark:border-zinc-800 pt-6">
-                <span className="text-2xl font-black text-zinc-900 dark:text-white font-display italic">{item.price}</span>
-                <button 
-                  id={`cart-btn-${item.id}`} 
-                  onClick={(e) => addToCart(e, item.id)} 
-                  className="size-12 bg-zinc-100 dark:bg-zinc-800 rounded-2xl flex items-center justify-center hover:bg-primary hover:text-white dark:hover:bg-white dark:hover:text-black transition-all shadow-sm"
-                >
-                  <span className="material-symbols-outlined">shopping_cart</span>
-                </button>
-              </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-24">
+          {equipment.length === 0 ? (
+            <div className="col-span-full text-center py-20">
+              <p className="text-zinc-400 text-lg">暂无装备数据</p>
             </div>
-          ))}
+          ) : (
+            equipment.map((item) => (
+              <div 
+                key={item.id} 
+                className="reveal-on-scroll group cursor-pointer"
+              >
+                <div className="relative aspect-square overflow-hidden rounded-[3rem] mb-12 shadow-2xl">
+                  <img 
+                    src={item.image_url || "https://picsum.photos/800/800?random=1"} 
+                    alt={item.name} 
+                    className="w-full h-full object-cover transition-transform duration-[3s] group-hover:scale-110"
+                  />
+                  <div className="absolute inset-0 bg-black/10 group-hover:bg-transparent transition-all" />
+                  <div className="absolute top-8 left-8">
+                    <span className="px-6 py-2 glass-premium rounded-full text-[9px] font-black uppercase tracking-widest">{item.category}</span>
+                  </div>
+                </div>
+                <div className="px-6">
+                  <p className="text-[10px] font-black text-zinc-600 uppercase tracking-[0.4em] mb-4">{item.brand}</p>
+                  <h3 className="text-3xl font-black uppercase italic tracking-tight mb-6 group-hover:text-accent transition-colors">{item.name}</h3>
+                  <div className="flex items-center justify-between">
+                    <span className="text-4xl font-black font-display italic text-white/20 group-hover:text-white transition-colors">{formatPrice(item.price)}</span>
+                    <button 
+                      id={`cart-btn-${item.id}`}
+                      onClick={() => handleAddToCart(item.id)}
+                      className="magnetic-btn size-16 bg-white/5 backdrop-blur-3xl flex items-center justify-center rounded-2xl border border-white/10 hover:bg-white hover:text-black transition-all"
+                    >
+                      <span className="material-symbols-outlined">add</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </div>
     </div>

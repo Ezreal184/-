@@ -1,230 +1,138 @@
-
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
 interface LandingViewProps {
   onStart: () => void;
 }
 
 const LandingView: React.FC<LandingViewProps> = ({ onStart }) => {
-  const [visibleSections, setVisibleSections] = useState<Set<string>>(new Set());
   const [scrollY, setScrollY] = useState(0);
-  const observer = useRef<IntersectionObserver | null>(null);
 
   useEffect(() => {
-    // Parallax scroll listener
-    const handleScroll = () => {
-      setScrollY(window.scrollY);
-    };
-
+    const handleScroll = () => setScrollY(window.scrollY);
     window.addEventListener('scroll', handleScroll, { passive: true });
-
-    // Reveal Intersection Observer
-    observer.current = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          setVisibleSections(prev => new Set(prev).add(entry.target.id));
-        } else {
-          setVisibleSections(prev => {
-            const next = new Set(prev);
-            next.delete(entry.target.id);
-            return next;
-          });
-        }
-      });
-    }, { 
-      threshold: 0.15,
-      rootMargin: "0px 0px -50px 0px"
-    });
-
-    const sections = document.querySelectorAll('.reveal-section');
-    sections.forEach(section => observer.current?.observe(section));
-
-    return () => {
-      observer.current?.disconnect();
-      window.removeEventListener('scroll', handleScroll);
-    };
+    return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const isVisible = (id: string) => visibleSections.has(id);
-
-  const features = [
-    {
-      icon: 'auto_awesome',
-      title: 'AI 装备顾问',
-      desc: '基于 Gemini 3.0，根据您的攀登目标提供毫秒级的技术装备清单建议。'
-    },
-    {
-      icon: 'public',
-      title: '全球远征社区',
-      desc: '连接从喜马拉雅到阿尔卑斯的所有硬核探险者，实时分享高山日志。'
-    },
-    {
-      icon: 'ac_unit',
-      title: '智能气象预警',
-      desc: '结合地面站数据与 AI 预测，为您的每一次冲顶提供安全的天气防线。'
-    }
-  ];
-
-  const futureFeatures = [
-    {
-      tag: 'Q4 2024',
-      title: 'AR 巅峰识别',
-      desc: '通过摄像头实时识别视野中的所有山峰高度与路线信息。'
-    },
-    {
-      tag: '2025 EARLY',
-      title: '离线 3D 轨迹',
-      desc: '即使在无信号的极高海拔，也能拥有精确到米的 3D 导航体验。'
-    }
-  ];
-
   return (
-    <div className="bg-zinc-950 text-white selection:bg-white selection:text-black overflow-x-hidden">
-      {/* Hero Section with Parallax */}
-      <section className="relative min-h-[calc(100vh-80px)] flex items-center justify-center overflow-hidden">
+    <div className="bg-black text-white selection:bg-accent selection:text-black overflow-x-hidden">
+      {/* 沉浸式 Hero Section */}
+      <section className="relative h-[160vh] flex items-center justify-center overflow-hidden">
+        {/* 背景视差层 */}
         <div 
-          className="absolute inset-0 bg-cover bg-center opacity-40 will-change-transform" 
+          className="absolute inset-0 z-0" 
           style={{ 
-            backgroundImage: "url('https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&q=80&w=2000')",
-            transform: `translate3d(0, ${scrollY * 0.3}px, 0) scale(1.1)`,
-            transition: 'transform 0.1s ease-out'
+            backgroundImage: "url('https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&q=80&w=2400')",
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            transform: `translate3d(0, ${scrollY * 0.35}px, 0) scale(${1 + scrollY * 0.0003})`,
+            filter: `blur(${scrollY * 0.003}px) brightness(${1 - scrollY * 0.0004})`
           }}
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-zinc-950/20 to-zinc-950" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black z-[1]" />
         
-        <div className="relative z-10 text-center px-6 max-w-4xl py-20">
-          <div className="text-white size-16 md:size-24 mx-auto mb-8 md:mb-10 drop-shadow-2xl">
-            <span className="material-symbols-outlined text-6xl md:text-8xl">terrain</span>
-          </div>
-          <h1 className="text-5xl md:text-[11rem] font-black font-display italic text-white tracking-tighter mb-4 uppercase leading-none">
-            SUMMIT REACH
-          </h1>
-          <p className="text-zinc-400 text-sm md:text-2xl font-medium mb-8 md:mb-12 tracking-[0.2em] uppercase">
-            地表极限攀登者的数字避风港
-          </p>
-          <div className="flex flex-col items-center gap-12 md:gap-20">
-            <button 
-              onClick={(e) => {
-                e.stopPropagation();
-                onStart();
-              }}
-              className="group relative inline-flex items-center gap-4 bg-white text-zinc-950 px-10 md:px-16 py-4 md:py-6 rounded-none font-black text-xs md:text-sm uppercase tracking-[0.4em] shadow-2xl hover:bg-zinc-200 transition-all active:scale-95"
-            >
-              开启您的征程
-              <span className="material-symbols-outlined group-hover:translate-x-2 transition-transform">arrow_forward</span>
-            </button>
-            
-            <div className="animate-bounce">
-              <span className="material-symbols-outlined text-zinc-500 text-2xl md:text-3xl">expand_more</span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-
-      {/* Feature Highlights */}
-      <section id="features" className="reveal-section relative py-20 md:py-32 px-6 lg:px-20 bg-zinc-950">
-        <div className={`max-w-[1400px] mx-auto transition-all duration-1000 cubic-bezier(0.4, 0, 0.2, 1) transform ${isVisible('features') ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-20 scale-95'}`}>
-          <div className="mb-16 md:mb-24 text-center">
-            <h2 className="text-[10px] font-black tracking-[0.5em] text-zinc-500 uppercase mb-4">Core Ecosystem</h2>
-            <h3 className="text-3xl md:text-6xl font-black font-display italic uppercase">核心功能</h3>
+        <div className="relative z-10 text-center px-6 mt-[-30vh]">
+          {/* 建立日期 - 移动端缩小追踪距离 */}
+          <div className="reveal-on-scroll mb-8 md:mb-16">
+             <p className="text-accent text-[9px] md:text-[11px] font-black uppercase tracking-[0.8em] md:tracking-[1.5em] italic">
+               Establishment 2024
+             </p>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-16">
-            {features.map((f, i) => (
-              <div key={i} className="group p-8 border border-zinc-800 hover:border-zinc-500 transition-colors">
-                <span className="material-symbols-outlined text-5xl text-white mb-8 block group-hover:scale-110 transition-transform">
-                  {f.icon}
-                </span>
-                <h4 className="text-xl font-black uppercase tracking-widest mb-4 font-display italic">{f.title}</h4>
-                <p className="text-zinc-500 leading-relaxed text-sm">{f.desc}</p>
-              </div>
+          {/* 主标题 - 响应式字号 */}
+          <h1 className="text-[25vw] md:text-[20vw] font-black font-display italic tracking-tighter leading-none mix-blend-difference select-none mb-16 md:mb-24 flex justify-center gap-[2vw]">
+            {['V', 'O', 'I', 'D'].map((char, i) => (
+              <span key={i} className="reveal-on-scroll letter-reveal" style={{ transitionDelay: `${i * 100}ms` }}>
+                <span>{char}</span>
+              </span>
             ))}
+          </h1>
+
+          {/* 核心动作按钮 */}
+          <div className="reveal-on-scroll" style={{ transitionDelay: '500ms' }}>
+            <button 
+              onClick={onStart}
+              className="magnetic-btn group relative px-16 md:px-24 py-8 md:py-10 bg-white text-black font-black text-[9px] md:text-[11px] uppercase tracking-[0.4em] md:tracking-[0.6em] transition-all overflow-hidden shadow-[0_40px_100px_rgba(255,255,255,0.1)]"
+            >
+              <span className="relative z-10 flex items-center gap-4 md:gap-8">
+                Start Expedition
+                <span className="material-symbols-outlined text-sm group-hover:translate-x-4 transition-transform">arrow_forward</span>
+              </span>
+              <div className="absolute inset-0 bg-accent translate-y-[100%] group-hover:translate-y-0 transition-transform duration-500" />
+            </button>
           </div>
         </div>
-      </section>
 
-      {/* Stats Parallax Section */}
-      <section className="relative py-24 md:py-48 px-6 lg:px-20 overflow-hidden bg-zinc-950">
+        {/* 侧边视差数据流 - 移动端隐藏以防溢出 */}
         <div 
-          className="absolute inset-0 bg-cover bg-center opacity-20 will-change-transform" 
-          style={{ 
-            backgroundImage: "url('https://images.unsplash.com/photo-1522163182402-834f871fd851?auto=format&fit=crop&q=80&w=2000')",
-            transform: `translate3d(0, ${(scrollY - 1500) * 0.15}px, 0) scale(1.1)`,
-            transition: 'transform 0.1s ease-out'
-          }}
-        />
-        <div className="relative z-10 max-w-[1400px] mx-auto grid grid-cols-1 md:grid-cols-2 gap-12 md:gap-20 items-center">
-          <div id="stats-text" className={`reveal-section transition-all duration-1000 cubic-bezier(0.4, 0, 0.2, 1) ${isVisible('stats-text') ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-20'}`}>
-            <h2 className="text-3xl md:text-8xl font-black font-display italic uppercase mb-8 leading-tight">致敬向上而生的<br/>探险精神</h2>
-            <p className="text-zinc-400 text-base md:text-lg leading-relaxed max-w-md">
-              从珠穆朗玛到巴塔哥尼亚，SUMMIT REACH 旨在为每一位踏入垂直荒野的人提供最坚实的数字后盾。
-            </p>
-          </div>
-          <div id="stats-numbers" className={`reveal-section grid grid-cols-2 gap-4 md:gap-8 transition-all duration-1000 delay-150 cubic-bezier(0.4, 0, 0.2, 1) ${isVisible('stats-numbers') ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
-            <div className="p-6 md:p-10 bg-white/5 backdrop-blur-md border border-white/10">
-              <span className="block text-3xl md:text-5xl font-black font-display mb-2 tracking-tighter italic">8,000M+</span>
-              <span className="text-[8px] md:text-[10px] font-bold text-zinc-500 uppercase tracking-widest">覆盖高峰数据</span>
-            </div>
-            <div className="p-6 md:p-10 bg-white/5 backdrop-blur-md border border-white/10">
-              <span className="block text-3xl md:text-5xl font-black font-display mb-2 tracking-tighter italic">120K+</span>
-              <span className="text-[8px] md:text-[10px] font-bold text-zinc-500 uppercase tracking-widest">活跃全球探险者</span>
-            </div>
-          </div>
+          className="absolute bottom-40 left-12 lg:left-24 hidden lg:flex items-center gap-10 opacity-30 pointer-events-none"
+          style={{ transform: `translateY(${scrollY * -0.15}px)` }}
+        >
+          <div className="h-px w-24 bg-white" />
+          <span className="text-[10px] font-black uppercase tracking-[0.5em] italic">Precision / Will / Peak</span>
+        </div>
+
+        <div 
+          className="absolute top-1/2 right-12 lg:right-24 hidden lg:flex flex-col items-end gap-4 opacity-20 pointer-events-none"
+          style={{ transform: `translateY(${scrollY * 0.12}px)` }}
+        >
+          <span className="text-[9px] font-black uppercase tracking-[0.3em]">GPS: 27.9881° N</span>
+          <span className="text-[9px] font-black uppercase tracking-[0.3em]">ELE: 8,848 M</span>
         </div>
       </section>
 
-      {/* Roadmap Section */}
-      <section id="roadmap" className="reveal-section py-20 md:py-32 px-6 lg:px-20 bg-white text-zinc-950">
-        <div className={`max-w-[1400px] mx-auto transition-all duration-1000 cubic-bezier(0.4, 0, 0.2, 1) ${isVisible('roadmap') ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 translate-y-10'}`}>
-          <div className="mb-16 md:mb-24 flex flex-col md:flex-row justify-between items-end gap-6">
-            <div>
-              <h2 className="text-[10px] font-black tracking-[0.5em] text-zinc-400 uppercase mb-4">Future Horizons</h2>
-              <h3 className="text-3xl md:text-6xl font-black font-display italic uppercase">未来蓝图</h3>
-            </div>
-            <p className="text-zinc-500 font-bold tracking-widest uppercase text-xs">下一代高山探险科技正在酝酿</p>
+      {/* 品牌理念 - 优化响应式排版 */}
+      <section className="relative z-10 -mt-[40vh] pb-40 md:pb-80 px-6 lg:px-24 flex flex-col items-center">
+        <div className="max-w-7xl w-full">
+          <div className="reveal-on-scroll mb-32 md:mb-60 space-y-8 md:space-y-12">
+            <h2 className="text-[15vw] md:text-[12vw] font-black font-display italic uppercase leading-[0.85] tracking-tighter">
+              <span className="text-accent block reveal-on-scroll">Redefining</span>
+              <span className="block reveal-on-scroll" style={{ transitionDelay: '200ms' }}>The Vertical</span> 
+              <span className="text-white/10 block reveal-on-scroll" style={{ transitionDelay: '400ms' }}>Reality</span>
+            </h2>
+            <div className="h-1 md:h-2 w-24 md:w-40 bg-accent reveal-on-scroll" style={{ transitionDelay: '600ms' }} />
           </div>
+          
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-20 md:gap-60 text-left items-start">
+            <div className="space-y-16 md:space-y-24">
+              <div className="reveal-on-scroll">
+                <p className="text-zinc-500 text-2xl md:text-5xl leading-[1.1] font-light tracking-tight italic">
+                  我们不仅仅是一个社区。我们是数字时代下对原始冲动的 <span className="text-white font-medium italic">精准模拟</span> 与致敬。
+                </p>
+              </div>
+              <div className="pt-10 md:pt-20 reveal-on-scroll" style={{ transitionDelay: '300ms' }}>
+                 <div className="relative overflow-hidden rounded-[3rem] md:rounded-[4rem] group shadow-2xl">
+                   <img src="https://images.unsplash.com/photo-1522163182402-834f871fd851?auto=format&fit=crop&q=80&w=1200" 
+                        className="w-full grayscale group-hover:grayscale-0 transition-all duration-[2s] scale-110 group-hover:scale-100" />
+                   <div className="absolute inset-0 bg-accent/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+                 </div>
+              </div>
+            </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12">
-            {futureFeatures.map((f, i) => (
-              <div key={i} className="bg-zinc-50 p-8 md:p-12 border-l-8 border-zinc-950 flex flex-col justify-between group hover:bg-zinc-100 transition-colors">
-                <div>
-                  <span className="inline-block px-3 py-1 bg-zinc-950 text-white text-[8px] font-black tracking-widest uppercase mb-8">
-                    {f.tag}
-                  </span>
-                  <h4 className="text-2xl md:text-3xl font-black font-display italic uppercase mb-6">{f.title}</h4>
-                  <p className="text-zinc-600 leading-relaxed max-w-sm">{f.desc}</p>
+            <div className="space-y-20 md:space-y-40">
+              {[
+                { phase: "01", title: "Satellite Pulse", desc: "实时接入高分辨率地球观测卫星，为您的每一次足迹提供最精确的坐标锚定与气象模拟。" },
+                { phase: "02", title: "Elite Matrix", desc: "仅限受邀的探险者。这里没有噪音，只有最纯粹的巅峰日志与跨越国界的技术交流。" }
+              ].map((item, i) => (
+                <div key={i} className="reveal-on-scroll group space-y-6 md:space-y-8" style={{ transitionDelay: `${(i+1)*200}ms` }}>
+                  <span className="text-accent font-black text-[9px] md:text-[10px] tracking-[0.6em] md:tracking-[1em] uppercase">Phase {item.phase}</span>
+                  <h4 className="text-3xl md:text-4xl font-black uppercase italic tracking-tighter group-hover:text-accent transition-colors">{item.title}</h4>
+                  <p className="text-zinc-500 leading-relaxed text-lg md:text-xl font-light italic">
+                    {item.desc}
+                  </p>
+                  <div className="h-px w-full bg-white/5 group-hover:bg-accent/50 transition-all duration-700" />
                 </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+              ))}
 
-      {/* Final CTA with Parallax Background */}
-      <section id="final-cta" className="reveal-section relative py-24 md:py-48 text-center px-6 bg-zinc-950 overflow-hidden">
-        <div 
-          className="absolute inset-0 bg-cover bg-center opacity-30 will-change-transform" 
-          style={{ 
-            backgroundImage: "url('https://images.unsplash.com/photo-1491555103944-7c647fd857e6?auto=format&fit=crop&q=80&w=2000')",
-            transform: `translate3d(0, ${(scrollY - 3000) * 0.2}px, 0) scale(1.1)`,
-            transition: 'transform 0.1s ease-out'
-          }}
-        />
-        <div className="absolute inset-0 bg-zinc-950/40" />
-        
-        <div className={`relative z-10 transition-all duration-1000 cubic-bezier(0.4, 0, 0.2, 1) ${isVisible('final-cta') ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-20'}`}>
-          <h2 className="text-3xl md:text-7xl font-black font-display italic uppercase mb-8 text-white">巅峰就在彼岸</h2>
-          <button 
-            onClick={(e) => {
-              e.stopPropagation();
-              onStart();
-            }}
-            className="group relative inline-flex items-center gap-4 bg-white text-zinc-950 px-12 md:px-20 py-5 md:py-8 rounded-none font-black text-sm md:text-lg uppercase tracking-[0.4em] shadow-2xl hover:bg-zinc-200 transition-all active:scale-95"
-          >
-            立即加入远征
-            <span className="material-symbols-outlined group-hover:translate-x-2 transition-transform">arrow_forward</span>
-          </button>
+              <div className="pt-10 md:pt-20 reveal-on-scroll" style={{ transitionDelay: '500ms' }}>
+                <button 
+                  onClick={onStart}
+                  className="px-12 md:px-16 py-6 md:py-8 glass-premium rounded-full text-[9px] md:text-[10px] font-black uppercase tracking-[0.4em] md:tracking-[0.5em] hover:bg-white hover:text-black transition-all hover:scale-105"
+                >
+                  Join The Inner Circle
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
     </div>

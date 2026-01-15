@@ -1,17 +1,17 @@
-
 import { Post, UserProfile } from './types';
 
 export const MOCK_USER: UserProfile = {
-  name: "亚历克斯 · 斯特林",
-  title: "专业阿尔卑斯登山家",
+  name: "新进探险家",
+  title: "初级登山者",
   bio: "高山攀登者 & 摄影师 | 巅峰收集者 | 追逐下一个顶峰",
   stats: {
-    climbs: 128,
-    followers: "2.4k",
-    following: 850
+    climbs: 0,
+    followers: "0",
+    following: 0
   },
-  avatarUrl: "https://lh3.googleusercontent.com/aida-public/AB6AXuC8-kXoXZ49wx_QN3-9zWISllnAfGrJ6rzUpEyMgf-ml-9RvkiahYLgz9-yGA_BRSfI-8dEbyWMfqPFEtmfaGbqgs7Vn63giSmt2nbO9vpPjqaiQBbE-V10zqYVGV84yoYm47AhUV5zVPkpAAv_VSKFIXf9ImPMkrtAciKsp1jzj8r-4a9aXMrOiSxxCKd3QZYK5lpSqo9v5kApkT7TDMYxQRHDvmrIBW7BxN8YvwnnC3QCV6pm7bWaQVIC9lAabsbVoAS6fE604r8",
-  bannerUrl: "https://lh3.googleusercontent.com/aida-public/AB6AXuCBuGaEDc95CKZHu90GtlLtAdtt1A_WNBYVF-QiZ21_8YHYzTzd8oLJRT2AO5wSO_YOLHPJGAfaF3-dg0uHOvYfnarJKmaiub8V_vPnm8pJnR3xCGx2c_Jj3HqD5AHS999BpYMIupO23rlKZcm9NXuGQMDgNMTuOM8_NVcaALSGi9jdb8yCBsJjHI4L4xQuJJPdwgo7qQGxt9islZ4KR0-YfFIpEZypxSIjLzu4CHKnplpoZvU9hvEJ0zT0cRL8apFo2I62BODOZXg"
+  // 使用一个通用的、具有登山风格的默认头像
+  avatarUrl: "https://images.unsplash.com/photo-1533632359083-0185df1be85d?auto=format&fit=crop&q=60&w=200",
+  bannerUrl: "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&q=80&w=2000"
 };
 
 export const MOCK_POSTS: Post[] = [

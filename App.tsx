@@ -15,21 +15,26 @@ import LoginRequiredModal from './components/LoginRequiredModal';
 import AuthView from './components/AuthView';
 import PublicProfileView from './components/PublicProfileView';
 import LandingView from './components/LandingView';
+import PostDetailView from './components/PostDetailView';
+import AtmosphericOverlay from './components/AtmosphericOverlay';
+import ChatView from './components/ChatView';
 import { TabType, UserProfile } from './types';
 import { MOCK_USER } from './constants';
 import { useAuth } from './contexts/AuthContext';
 
 const App: React.FC = () => {
-  const { user, loading: authLoading, signOut, isAuthenticated } = useAuth();
-  
-  const [isLandingPage, setIsLandingPage] = useState(true);
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const { user, isLoggedIn, logout } = useAuth();
+  const [isLandingPage, setIsLandingPage] = useState(!isLoggedIn);
   const [activeTab, setActiveTab] = useState<TabType>(TabType.POSTS);
-  const [mainView, setMainView] = useState<'profile' | 'explore' | 'community' | 'equipment' | 'auth' | 'other-profile'>('community');
+  const [mainView, setMainView] = useState<'profile' | 'explore' | 'community' | 'equipment' | 'auth' | 'other-profile' | 'post-detail' | 'chat'>('community');
+  const [viewTransitioning, setViewTransitioning] = useState(false);
   const [selectedUser, setSelectedUser] = useState<any>(null);
+  const [selectedPost, setSelectedPost] = useState<any>(null);
   
-  // 用户动态资料状态
-  const [userProfile, setUserProfile] = useState<UserProfile>(MOCK_USER);
+  const [userProfile, setUserProfile] = useState<UserProfile>(() => {
+    const savedProfile = localStorage.getItem('summit_reach_user_profile');
+    return savedProfile ? JSON.parse(savedProfile) : MOCK_USER;
+  });
   
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
@@ -38,22 +43,30 @@ const App: React.FC = () => {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [initialSearchQuery, setInitialSearchQuery] = useState('');
 
-  // 检查是否已登录过（用于跳过 landing page）
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isLoggedIn) {
       setIsLandingPage(false);
-      setMainView('community');
+      if (mainView === 'auth') {
+        setMainView('community');
+      }
+    } else {
+      setIsLandingPage(true);
     }
-  }, [isAuthenticated]);
+  }, [isLoggedIn]);
 
   const handleLogout = async () => {
-    setIsLoggingOut(true);
-    await signOut();
-    setTimeout(() => {
-      setIsLoggingOut(false);
-      setMainView('community');
-      setIsLandingPage(true);
-    }, 1500);
+    setViewTransitioning(true);
+    try {
+      await logout();
+      setTimeout(() => {
+        setMainView('community');
+        setIsLandingPage(true);
+        setViewTransitioning(false);
+      }, 800);
+    } catch (error) {
+      console.error('Logout failed:', error);
+      setViewTransitioning(false);
+    }
   };
 
   const handleLoginSuccess = () => {
@@ -63,207 +76,128 @@ const App: React.FC = () => {
   };
 
   const handleUpdateProfile = (newData: Partial<UserProfile>) => {
-    setUserProfile(prev => ({ ...prev, ...newData }));
+    setUserProfile(prev => {
+      const updated = { ...prev, ...newData };
+      localStorage.setItem('summit_reach_user_profile', JSON.stringify(updated));
+      return updated;
+    });
   };
 
   const handleStartJourney = () => {
-    setIsLandingPage(false);
-    if (!isAuthenticated) {
-      setMainView('community');
-    } else {
-      setMainView('profile');
-    }
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setViewTransitioning(true);
+    setTimeout(() => {
+      setIsLandingPage(false);
+      setMainView(isLoggedIn ? 'profile' : 'community');
+      setViewTransitioning(false);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }, 1000);
   };
 
-  const handleNavigation = (view: 'profile' | 'explore' | 'community' | 'equipment' | 'auth' | 'other-profile', payload?: any) => {
-    if (view === 'auth') {
-      setMainView('auth');
-      setIsLandingPage(false);
+  const handleNavigation = (view: any, payload?: any) => {
+    if ((view === 'chat') && !isLoggedIn) {
+      setIsAuthModalOpen(true);
       return;
     }
-    
-    if (view === 'other-profile') {
-      setSelectedUser(payload);
-    } else if (typeof payload === 'string') {
-      setInitialSearchQuery(payload);
-    } else {
-      setInitialSearchQuery('');
-    }
-    
-    setMainView(view);
-    setIsLandingPage(false);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
 
-  const handleAuthRequired = () => {
-    setIsAuthModalOpen(true);
-  };
-
-  const renderProfileTabContent = () => {
-    switch (activeTab) {
-      case TabType.TRAILS:
-        return (
-          <div className="mt-8 h-[600px] border border-zinc-100 dark:border-zinc-800 overflow-hidden relative">
-            <MapView />
-          </div>
-        );
-      case TabType.GEAR:
-        return (
-          <div className="py-12 text-center text-zinc-400">
-             <span className="material-symbols-outlined text-6xl mb-4">handyman</span>
-             <p className="font-bold uppercase tracking-widest text-xs">您的核心装备清单正在同步中...</p>
-          </div>
-        );
-      case TabType.POSTS:
-      default:
-        return <PostGrid onNavigate={handleNavigation} onAuthRequired={handleAuthRequired} isLoggedIn={isAuthenticated} />;
-    }
+    setViewTransitioning(true);
+    setTimeout(() => {
+      if (view === 'auth') {
+        setMainView('auth');
+      } else if (view === 'other-profile') {
+        setSelectedUser(payload);
+        setMainView('other-profile');
+      } else if (view === 'post-detail') {
+        setSelectedPost({ ...payload, currentUserAvatar: userProfile.avatarUrl });
+        setMainView('post-detail');
+      } else {
+        setMainView(view);
+        if (typeof payload === 'string') setInitialSearchQuery(payload);
+      }
+      setIsLandingPage(false);
+      setViewTransitioning(false);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }, 800);
   };
 
   const renderMainContent = () => {
-    if (isLandingPage) {
-      return <LandingView onStart={handleStartJourney} />;
-    }
-
-    if (mainView === 'auth') {
-      return <AuthView onLoginSuccess={handleLoginSuccess} onBack={() => {
-        if (isAuthenticated) setMainView('profile');
-        else {
-          setIsLandingPage(true);
-          setMainView('community');
-        }
-      }} />;
-    }
+    if (isLandingPage) return <LandingView onStart={handleStartJourney} />;
+    if (mainView === 'auth') return <AuthView onLoginSuccess={handleLoginSuccess} onBack={() => setMainView('community')} />;
 
     switch (mainView) {
       case 'profile':
         return (
-          <div className="pb-20 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <div className="pb-40 animate-in fade-in slide-in-from-bottom-12 duration-1000">
             <ProfileHero user={userProfile} onEdit={() => setIsEditProfileOpen(true)} />
             <StatsBar user={userProfile} />
-            <div className="max-w-[1400px] mx-auto px-6 lg:px-20 mt-16">
-              <div className="flex border-b border-zinc-100 dark:border-zinc-800 justify-center overflow-x-auto no-scrollbar">
-                {[
-                  { id: TabType.POSTS, label: '探险记录', icon: 'grid_view' }, 
-                  { id: TabType.TRAILS, label: '地图踪迹', icon: 'explore' }, 
-                  { id: TabType.GEAR, label: '核心装备', icon: 'handyman' }
-                ].map((tab) => (
-                  <button 
-                    key={tab.id} 
-                    onClick={() => setActiveTab(tab.id)} 
-                    className={`px-8 lg:px-12 py-6 border-b-2 transition-all text-[10px] font-black tracking-[0.3em] uppercase whitespace-nowrap flex items-center gap-2 ${activeTab === tab.id ? 'border-primary text-primary dark:text-white dark:border-white' : 'border-transparent text-zinc-400 hover:text-zinc-600'}`}
-                  >
-                    <span className="material-symbols-outlined text-lg">{tab.icon}</span>
-                    {tab.label}
-                  </button>
-                ))}
+            <div className="max-w-[1400px] mx-auto px-6 lg:px-20 mt-32">
+              <div className="flex justify-center overflow-x-auto no-scrollbar mb-20">
+                <div className="flex bg-white/5 p-2 rounded-3xl backdrop-blur-3xl">
+                  {[
+                    { id: TabType.POSTS, label: 'Journal', icon: 'grid_view' }, 
+                    { id: TabType.TRAILS, label: 'Trail Maps', icon: 'explore' }, 
+                    { id: TabType.GEAR, label: 'Core Gear', icon: 'handyman' }
+                  ].map((tab) => (
+                    <button 
+                      key={tab.id} 
+                      onClick={() => setActiveTab(tab.id)} 
+                      className={`px-10 py-5 rounded-2xl transition-all text-[10px] font-black tracking-[0.4em] uppercase whitespace-nowrap flex items-center gap-3 ${activeTab === tab.id ? 'bg-white text-black shadow-2xl' : 'text-zinc-500 hover:text-white'}`}
+                    >
+                      <span className="material-symbols-outlined text-lg">{tab.icon}</span>
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
               </div>
-              <div className="min-h-[400px]">
-                {renderProfileTabContent()}
+              <div className="reveal-on-scroll">
+                {activeTab === TabType.POSTS && <PostGrid onNavigate={handleNavigation} onAuthRequired={() => setIsAuthModalOpen(true)} isLoggedIn={isLoggedIn} />}
+                {activeTab === TabType.TRAILS && <div className="h-[70vh] rounded-[4rem] overflow-hidden shadow-2xl"><MapView /></div>}
               </div>
             </div>
           </div>
         );
+      case 'chat':
+        return <ChatView />;
       case 'other-profile':
-        return <PublicProfileView user={selectedUser} onBack={() => setMainView('community')} isLoggedIn={isAuthenticated} onAuthRequired={handleAuthRequired} />;
+        return <PublicProfileView user={selectedUser} onBack={() => setMainView('community')} isLoggedIn={isLoggedIn} onAuthRequired={() => setIsAuthModalOpen(true)} />;
       case 'explore':
-        return <ExploreView initialQuery={initialSearchQuery} onNavigate={handleNavigation} isLoggedIn={isAuthenticated} onAuthRequired={handleAuthRequired} />;
+        return <ExploreView initialQuery={initialSearchQuery} onNavigate={handleNavigation} isLoggedIn={isLoggedIn} onAuthRequired={() => setIsAuthModalOpen(true)} />;
       case 'equipment':
-        return <EquipmentView onNavigate={handleNavigation} isLoggedIn={isAuthenticated} onAuthRequired={handleAuthRequired} />;
+        return <EquipmentView onNavigate={handleNavigation} isLoggedIn={isLoggedIn} onAuthRequired={() => setIsAuthModalOpen(true)} />;
+      case 'post-detail':
+        return <PostDetailView post={selectedPost} onBack={() => setMainView('community')} isLoggedIn={isLoggedIn} onAuthRequired={() => setIsAuthModalOpen(true)} />;
       case 'community':
       default:
-        return <CommunityView onNavigate={handleNavigation} isLoggedIn={isAuthenticated} onAuthRequired={handleAuthRequired} />;
+        return <CommunityView onNavigate={handleNavigation} isLoggedIn={isLoggedIn} onAuthRequired={() => setIsAuthModalOpen(true)} />;
     }
   };
 
-  // 显示加载状态
-  if (authLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-zinc-950">
-        <div className="text-white flex flex-col items-center gap-4">
-          <span className="material-symbols-outlined text-6xl animate-spin">progress_activity</span>
-          <p className="text-sm uppercase tracking-widest">加载中...</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen flex flex-col bg-white dark:bg-zinc-950 selection:bg-primary selection:text-white">
-      {mainView !== 'auth' && !isLandingPage && (
+    <div className="min-h-screen flex flex-col selection:bg-accent selection:text-black">
+      <AtmosphericOverlay />
+      
+      {mainView !== 'auth' && mainView !== 'post-detail' && (
         <Header 
           onNavigate={handleNavigation} 
-          onOpenNotifications={() => isAuthenticated ? setIsNotificationsOpen(true) : handleAuthRequired()}
-          onOpenEditProfile={() => isAuthenticated ? setIsEditProfileOpen(true) : handleAuthRequired()}
-          onOpenPreferences={() => isAuthenticated ? setIsPreferencesOpen(true) : handleAuthRequired()}
-          onOpenProfileDetail={() => isAuthenticated ? setIsProfileDetailOpen(true) : handleAuthRequired()}
+          onOpenNotifications={() => setIsNotificationsOpen(true)}
+          onOpenEditProfile={() => setIsEditProfileOpen(true)}
+          onOpenPreferences={() => setIsPreferencesOpen(true)}
+          onOpenProfileDetail={() => setIsProfileDetailOpen(true)}
           onLogout={handleLogout}
-          isLoggedIn={isAuthenticated}
+          isLoggedIn={isLoggedIn}
           currentView={isLandingPage ? 'landing' : mainView} 
-          user={userProfile}
+          user={userProfile} 
         />
       )}
       
-      <main className="flex-1 overflow-x-hidden relative">
-        {isLoggingOut && (
-          <div className="fixed inset-0 z-[200] bg-white/80 dark:bg-zinc-950/80 backdrop-blur-md flex flex-col items-center justify-center animate-in fade-in duration-300">
-            <div className="size-16 border-4 border-zinc-200 border-t-primary rounded-full animate-spin mb-6"></div>
-            <p className="text-[10px] font-black uppercase tracking-[0.5em] text-zinc-500">正在安全退出大本营...</p>
-          </div>
-        )}
-
-        <div className={`transition-opacity duration-500 ${isLoggingOut ? 'opacity-20' : 'opacity-100'}`}>
-          {renderMainContent()}
-        </div>
-
-        {!isAuthenticated && !isLandingPage && mainView !== 'auth' && mainView !== 'community' && (
-          <div 
-            className="absolute inset-0 z-10 cursor-pointer bg-black/5" 
-            onClick={(e) => {
-              e.stopPropagation();
-              handleAuthRequired();
-            }}
-          />
-        )}
+      <main className={`flex-1 relative transition-all duration-[1s] ease-[cubic-bezier(0.16,1,0.3,1)] ${viewTransitioning ? 'opacity-0 scale-[1.05] blur-[40px]' : 'opacity-100 scale-100 blur-0'}`}>
+        {renderMainContent()}
       </main>
 
       <NotificationsDrawer isOpen={isNotificationsOpen} onClose={() => setIsNotificationsOpen(false)} />
-      <EditProfileModal 
-        isOpen={isEditProfileOpen} 
-        onClose={() => setIsEditProfileOpen(false)} 
-        user={userProfile}
-        onSave={handleUpdateProfile}
-      />
+      <EditProfileModal isOpen={isEditProfileOpen} onClose={() => setIsEditProfileOpen(false)} user={userProfile} onSave={handleUpdateProfile} />
       <PreferencesModal isOpen={isPreferencesOpen} onClose={() => setIsPreferencesOpen(false)} />
       <ProfileDetailModal user={userProfile} isOpen={isProfileDetailOpen} onClose={() => setIsProfileDetailOpen(false)} />
-      <LoginRequiredModal 
-        isOpen={isAuthModalOpen} 
-        onClose={() => setIsAuthModalOpen(false)} 
-        onGoToLogin={() => {
-          setIsAuthModalOpen(false);
-          setMainView('auth');
-          setIsLandingPage(false);
-        }} 
-      />
-
-      {!isLandingPage && (
-        <footer className="bg-zinc-50 dark:bg-zinc-900/50 border-t border-zinc-100 dark:border-zinc-800/50 py-20 px-6 lg:px-20">
-          <div className="max-w-[1400px] mx-auto flex flex-col md:flex-row justify-between items-center gap-12">
-            <div className="flex flex-col items-center md:items-start gap-4">
-              <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-primary dark:text-white text-3xl">terrain</span>
-                <h3 className="text-2xl font-black italic font-display text-zinc-900 dark:text-white uppercase">SUMMIT REACH</h3>
-              </div>
-              <p className="text-zinc-400 text-xs font-bold uppercase tracking-widest max-w-xs text-center md:text-left">致敬每一位勇敢向上的探索者。地表最强攀登社区。</p>
-            </div>
-            <div className="flex flex-col items-center md:items-end gap-2">
-              <p className="text-[10px] text-zinc-400 font-black uppercase tracking-[0.3em]">© 2024 SUMMIT REACH • BEYOND ALL LIMITS</p>
-              <p className="text-[9px] text-zinc-300 dark:text-zinc-700 font-bold uppercase tracking-2em">Crafted with Precision by Alpine Systems</p>
-            </div>
-          </div>
-        </footer>
-      )}
+      <LoginRequiredModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} onGoToLogin={() => { setIsAuthModalOpen(false); setMainView('auth'); }} />
     </div>
   );
 };

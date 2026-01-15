@@ -127,13 +127,16 @@ export type Database = {
           id: string;
           user_id: string;
           post_id: string;
+          parent_id: string | null;
           content: string;
+          likes_count: number;
           created_at: string;
         };
         Insert: {
           id?: string;
           user_id: string;
           post_id: string;
+          parent_id?: string | null;
           content: string;
         };
         Update: {
@@ -150,6 +153,130 @@ export type Database = {
             foreignKeyName: "comments_post_id_fkey";
             columns: ["post_id"];
             referencedRelation: "posts";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "comments_parent_id_fkey";
+            columns: ["parent_id"];
+            referencedRelation: "comments";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      comment_likes: {
+        Row: {
+          id: string;
+          user_id: string;
+          comment_id: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          comment_id: string;
+        };
+        Update: {
+          user_id?: string;
+          comment_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "comment_likes_user_id_fkey";
+            columns: ["user_id"];
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "comment_likes_comment_id_fkey";
+            columns: ["comment_id"];
+            referencedRelation: "comments";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      chat_contacts: {
+        Row: {
+          id: string;
+          user_id: string;
+          contact_id: string | null;
+          contact_name: string;
+          contact_avatar: string | null;
+          last_message: string | null;
+          last_message_time: string;
+          status: string;
+          is_ai: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          contact_id?: string | null;
+          contact_name: string;
+          contact_avatar?: string | null;
+          last_message?: string | null;
+          status?: string;
+          is_ai?: boolean;
+        };
+        Update: {
+          contact_name?: string;
+          contact_avatar?: string | null;
+          last_message?: string | null;
+          status?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "chat_contacts_user_id_fkey";
+            columns: ["user_id"];
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "chat_contacts_contact_id_fkey";
+            columns: ["contact_id"];
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      messages: {
+        Row: {
+          id: string;
+          sender_id: string;
+          receiver_id: string | null;
+          contact_id: string | null;
+          text: string;
+          is_ai: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          sender_id: string;
+          receiver_id?: string | null;
+          contact_id?: string | null;
+          text: string;
+          is_ai?: boolean;
+        };
+        Update: {
+          text?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "messages_sender_id_fkey";
+            columns: ["sender_id"];
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "messages_receiver_id_fkey";
+            columns: ["receiver_id"];
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "messages_contact_id_fkey";
+            columns: ["contact_id"];
+            referencedRelation: "chat_contacts";
             referencedColumns: ["id"];
           }
         ];
@@ -383,6 +510,17 @@ export type LikeInsert = Database['public']['Tables']['likes']['Insert'];
 export type Comment = Database['public']['Tables']['comments']['Row'];
 export type CommentInsert = Database['public']['Tables']['comments']['Insert'];
 export type CommentUpdate = Database['public']['Tables']['comments']['Update'];
+
+export type CommentLike = Database['public']['Tables']['comment_likes']['Row'];
+export type CommentLikeInsert = Database['public']['Tables']['comment_likes']['Insert'];
+
+export type ChatContact = Database['public']['Tables']['chat_contacts']['Row'];
+export type ChatContactInsert = Database['public']['Tables']['chat_contacts']['Insert'];
+export type ChatContactUpdate = Database['public']['Tables']['chat_contacts']['Update'];
+
+export type Message = Database['public']['Tables']['messages']['Row'];
+export type MessageInsert = Database['public']['Tables']['messages']['Insert'];
+export type MessageUpdate = Database['public']['Tables']['messages']['Update'];
 
 export type Follow = Database['public']['Tables']['follows']['Row'];
 export type FollowInsert = Database['public']['Tables']['follows']['Insert'];

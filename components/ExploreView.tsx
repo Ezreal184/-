@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect } from 'react';
-import { searchMountains } from '../services/geminiService';
+import { searchMountains, getGeminiResponse } from '../services/geminiService';
 
 interface ExploreViewProps {
   initialQuery?: string;
@@ -12,7 +11,9 @@ interface ExploreViewProps {
 const ExploreView: React.FC<ExploreViewProps> = ({ initialQuery = '', onNavigate, onAuthRequired, isLoggedIn }) => {
   const [query, setQuery] = useState(initialQuery);
   const [result, setResult] = useState<{text: string, sources: any[]} | null>(null);
+  const [plan, setPlan] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [loadingPlan, setLoadingPlan] = useState(false);
 
   useEffect(() => {
     if (initialQuery) {
@@ -25,92 +26,136 @@ const ExploreView: React.FC<ExploreViewProps> = ({ initialQuery = '', onNavigate
     if (e) e.preventDefault();
     const activeQuery = directQuery || query;
     if (!activeQuery.trim()) return;
+    if (!isLoggedIn) { onAuthRequired(); return; }
     
     setLoading(true);
+    setPlan(null);
     try {
       const data = await searchMountains(activeQuery);
       setResult(data);
     } catch (err) {
-      console.error(err);
+      console.error('搜索失败:', err);
+      setResult({
+        text: '搜索服务暂时不可用，请稍后重试。',
+        sources: []
+      });
     } finally {
       setLoading(false);
     }
   };
 
+  const handleGeneratePlan = async () => {
+    if (!result) return;
+    setLoadingPlan(true);
+    try {
+      const planText = await getGeminiResponse(`为攀登 ${query} 生成详细的远征计划，包括准备阶段、攀登路线和安全注意事项。请用中文回答。`);
+      setPlan(planText);
+    } catch (error) {
+      console.error('生成计划失败:', error);
+      setPlan('计划生成服务暂时不可用，请稍后重试。');
+    } finally {
+      setLoadingPlan(false);
+    }
+  };
+
   return (
-    <div className="max-w-[1200px] mx-auto px-6 lg:px-20 py-12">
-      <div className="mb-12 text-center">
-        <h2 className="text-4xl font-black font-display mb-4">发现您的下一座顶峰</h2>
-        <p className="text-zinc-500 max-w-xl mx-auto">获取全球山峰的实时数据，由谷歌搜索和 Alpine AI 共同驱动。</p>
+    <div className="relative py-32 px-6 lg:px-24 max-w-[1800px] mx-auto z-10 space-y-48">
+      {/* 搜索核心区 */}
+      <div className="reveal-on-scroll max-w-4xl">
+        <p className="text-accent text-[10px] font-black uppercase tracking-[1em] mb-12">Search / Pulse Engine</p>
+        <h2 className="text-7xl lg:text-[10rem] font-black font-display italic uppercase tracking-tighter leading-[0.85] mb-20">
+          GLOBAL <br/> <span className="text-white/10">VERTICAL</span>
+        </h2>
         
-        <form onSubmit={handleSearch} className="mt-8 max-w-2xl mx-auto flex gap-2">
-          <div className="flex-1 bg-white border-2 border-zinc-100 rounded-2xl flex items-center px-4 focus-within:border-primary transition-all shadow-sm">
-            <span className="material-symbols-outlined text-zinc-400">search</span>
-            <input 
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="例如：勃朗峰、K2 现状、多洛米蒂路线..." 
-              className="w-full py-4 border-none focus:ring-0 text-zinc-700"
-            />
-          </div>
-          <button 
-            type="submit"
-            disabled={loading}
-            className="bg-primary text-white px-8 rounded-2xl font-bold hover:bg-opacity-90 transition-all flex items-center gap-2 disabled:opacity-50"
-          >
-            {loading ? <span className="animate-spin material-symbols-outlined">progress_activity</span> : '探索'}
+        <form onSubmit={handleSearch} className="relative group mb-32">
+          <input 
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Input coordinates or mountain names..."
+            className="w-full bg-transparent border-b-2 border-white/10 px-0 py-8 focus:border-accent outline-none transition-all text-4xl font-light placeholder:text-zinc-800"
+          />
+          <button type="submit" disabled={loading} className="absolute right-0 bottom-8 text-zinc-500 hover:text-white transition-colors">
+            {loading ? <span className="material-symbols-outlined animate-spin">sync</span> : <span className="material-symbols-outlined text-4xl">north_east</span>}
           </button>
         </form>
+
+        {!result && !loading && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-12 opacity-60">
+            {['K2 Extreme', 'Eiger North Wall', 'Annapurna Circuit'].map(hint => (
+              <button 
+                key={hint} 
+                onClick={() => {setQuery(hint); handleSearch(undefined, hint);}}
+                className="text-left group"
+              >
+                <span className="text-[9px] font-black text-zinc-600 uppercase tracking-widest block mb-4 group-hover:text-accent transition-colors">Quick Scan</span>
+                <span className="text-2xl font-black font-display italic uppercase border-b border-transparent group-hover:border-white transition-all">{hint}</span>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
+      {/* 结果显示区 */}
       {result && (
-        <div className="bg-white rounded-3xl p-8 border border-zinc-100 shadow-xl animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <div className="prose prose-zinc max-w-none">
-            <h3 className="text-2xl font-bold font-display text-primary mb-6 flex items-center gap-2">
-              <span className="material-symbols-outlined">landscape</span>
-              智能搜索结果
-            </h3>
-            <div className="text-zinc-700 leading-relaxed whitespace-pre-wrap text-lg">
-              {result.text}
-            </div>
+        <div className="reveal-on-scroll space-y-24">
+          <div className="glass-premium p-16 rounded-[4rem] relative overflow-hidden">
+             {/* 模拟扫描线效果 */}
+             <div className="absolute top-0 left-0 w-full h-px bg-accent/20 animate-[scan_4s_linear_infinite]" />
+             
+             <div className="flex flex-col lg:flex-row justify-between items-start gap-12 mb-16">
+               <div className="space-y-4">
+                 <h3 className="text-5xl font-black font-display italic uppercase tracking-tighter">Intelligence Briefing</h3>
+                 <p className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.5em]">Synchronized at current geo-node</p>
+               </div>
+               <button 
+                onClick={handleGeneratePlan}
+                disabled={loadingPlan}
+                className="magnetic-btn px-16 py-6 bg-white text-black text-[11px] font-black uppercase tracking-widest disabled:opacity-50"
+               >
+                 {loadingPlan ? 'Generating...' : 'Generate Tactical Plan'}
+               </button>
+             </div>
+
+             <div className="prose prose-invert prose-2xl max-w-none text-zinc-300 leading-relaxed italic mb-20 font-light">
+               {result.text}
+             </div>
+
+             {plan && (
+               <div className="bg-white/5 p-12 rounded-[3rem] animate-in slide-in-from-bottom-8 duration-700">
+                  <h4 className="text-accent text-[10px] font-black uppercase tracking-[0.8em] mb-12">Expedition Blueprint</h4>
+                  <div className="space-y-8">
+                    {plan.split('\n').filter(p => p.trim()).map((step, i) => (
+                      <div key={i} className="flex gap-8 group">
+                        <span className="text-4xl font-display italic font-black text-white/10 group-hover:text-accent transition-colors">{String(i+1).padStart(2, '0')}</span>
+                        <p className="text-xl text-zinc-400 group-hover:text-white transition-colors">{step}</p>
+                      </div>
+                    ))}
+                  </div>
+               </div>
+             )}
+
+             {result.sources && result.sources.length > 0 && (
+               <div className="mt-20 pt-20 border-t border-white/5">
+                 <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest mb-10">Verification Sources</p>
+                 <div className="flex flex-wrap gap-6">
+                   {result.sources.map((s, i) => (
+                     <a key={i} href={s.uri} target="_blank" rel="noopener noreferrer" className="px-8 py-4 bg-white/5 hover:bg-white hover:text-black rounded-full text-[10px] font-black uppercase tracking-widest transition-all">
+                       {s.title}
+                     </a>
+                   ))}
+                 </div>
+               </div>
+             )}
           </div>
-
-          {result.sources.length > 0 && (
-            <div className="mt-10 pt-6 border-t border-zinc-100">
-              <h4 className="text-sm font-bold uppercase tracking-widest text-zinc-400 mb-4">已验证来源</h4>
-              <div className="flex flex-wrap gap-3">
-                {result.sources.map((source, i) => (
-                  <a 
-                    key={i} 
-                    href={source.uri} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 bg-zinc-50 hover:bg-zinc-100 px-4 py-2 rounded-full text-xs font-semibold text-zinc-600 transition-colors border border-zinc-200"
-                  >
-                    <span className="material-symbols-outlined text-sm">link</span>
-                    {source.title}
-                  </a>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
       )}
-
-      {!result && !loading && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 opacity-60">
-          {['马特洪峰', '珠穆朗玛峰', '富士山'].map(peak => (
-            <div 
-              key={peak}
-              onClick={() => { setQuery(peak); handleSearch(undefined, peak); }}
-              className="cursor-pointer border-2 border-dashed border-zinc-200 rounded-2xl p-6 hover:border-primary hover:text-primary transition-all text-center"
-            >
-              <span className="material-symbols-outlined text-3xl mb-2">explore</span>
-              <p className="font-bold">探索{peak}</p>
-            </div>
-          ))}
-        </div>
-      )}
+      <style>{`
+        @keyframes scan {
+          0% { top: 0%; opacity: 0; }
+          50% { opacity: 1; }
+          100% { top: 100%; opacity: 0; }
+        }
+      `}</style>
     </div>
   );
 };
