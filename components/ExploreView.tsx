@@ -4,12 +4,12 @@ import { searchMountains } from '../services/geminiService';
 
 interface ExploreViewProps {
   initialQuery?: string;
-  // Fix: Added missing onNavigate and isLoggedIn properties to match props passed in App.tsx
   onNavigate: (view: any, query?: string) => void;
+  onAuthRequired: () => void;
   isLoggedIn: boolean;
 }
 
-const ExploreView: React.FC<ExploreViewProps> = ({ initialQuery = '', onNavigate, isLoggedIn }) => {
+const ExploreView: React.FC<ExploreViewProps> = ({ initialQuery = '', onNavigate, onAuthRequired, isLoggedIn }) => {
   const [query, setQuery] = useState(initialQuery);
   const [result, setResult] = useState<{text: string, sources: any[]} | null>(null);
   const [loading, setLoading] = useState(false);

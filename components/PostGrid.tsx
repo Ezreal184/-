@@ -5,17 +5,18 @@ import { getClimbAdvice } from '../services/geminiService';
 
 interface PostGridProps {
   onNavigate?: (view: any) => void;
+  onAuthRequired?: () => void;
   isLoggedIn: boolean;
 }
 
-const PostGrid: React.FC<PostGridProps> = ({ onNavigate, isLoggedIn }) => {
+const PostGrid: React.FC<PostGridProps> = ({ onNavigate, onAuthRequired, isLoggedIn }) => {
   const [selectedPost, setSelectedPost] = useState<string | null>(null);
   const [advice, setAdvice] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const handlePostClick = async (title: string, id: string) => {
     if (!isLoggedIn) {
-      onNavigate?.('auth');
+      onAuthRequired?.();
       return;
     }
     setSelectedPost(id);

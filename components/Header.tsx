@@ -1,5 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
+import { UserProfile } from '../types';
 
 interface HeaderProps {
   onNavigate: (view: 'profile' | 'explore' | 'community' | 'equipment' | 'auth', query?: string) => void;
@@ -10,6 +11,7 @@ interface HeaderProps {
   onLogout: () => void;
   isLoggedIn: boolean;
   currentView: string;
+  user?: UserProfile;
 }
 
 const Header: React.FC<HeaderProps> = ({ 
@@ -20,7 +22,8 @@ const Header: React.FC<HeaderProps> = ({
   onOpenProfileDetail,
   onLogout, 
   isLoggedIn,
-  currentView 
+  currentView,
+  user
 }) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -132,7 +135,7 @@ const Header: React.FC<HeaderProps> = ({
                 <button 
                   onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                   className={`size-10 bg-cover bg-center border-2 transition-all hover:scale-105 active:scale-95 ${isDropdownOpen ? 'border-primary dark:border-white ring-4 ring-primary/5' : 'border-zinc-100 dark:border-zinc-800'}`}
-                  style={{ backgroundImage: isLoggedIn ? "url('https://lh3.googleusercontent.com/aida-public/AB6AXuC8-kXoXZ49wx_QN3-9zWISllnAfGrJ6rzUpEyMgf-ml-9RvkiahYLgz9-yGA_BRSfI-8dEbyWMfqPFEtmfaGbqgs7Vn63giSmt2nbO9vpPjqaiQBbE-V10zqYVGV84yoYm47AhUV5zVPkpAAv_VSKFIXf9ImPMkrtAciKsp1jzj8r-4a9aXMrOiSxxCKd3QZYK5lpSqo9v5kApkT7TDMYxQRHDvmrIBW7BxN8YvwnnC3QCV6pm7bWaQVIC9lAabsbVoAS6fE604r8')" : "none" }}
+                  style={{ backgroundImage: isLoggedIn && user ? `url(${user.avatarUrl})` : "none" }}
                 >
                   {!isLoggedIn && <span className="material-symbols-outlined text-zinc-400">account_circle</span>}
                 </button>

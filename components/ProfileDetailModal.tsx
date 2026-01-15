@@ -1,13 +1,15 @@
 
 import React from 'react';
+import { UserProfile } from '../types';
 import { MOCK_USER } from '../constants';
 
 interface ProfileDetailModalProps {
+  user?: UserProfile;
   isOpen: boolean;
   onClose: () => void;
 }
 
-const ProfileDetailModal: React.FC<ProfileDetailModalProps> = ({ isOpen, onClose }) => {
+const ProfileDetailModal: React.FC<ProfileDetailModalProps> = ({ user = MOCK_USER, isOpen, onClose }) => {
   if (!isOpen) return null;
 
   const milestones = [
@@ -34,10 +36,10 @@ const ProfileDetailModal: React.FC<ProfileDetailModalProps> = ({ isOpen, onClose
 
         <div className="px-10 pb-10">
           <div className="relative -mt-16 flex items-end gap-6 mb-8">
-            <div className="size-32 rounded-[2.5rem] border-8 border-white shadow-xl bg-cover bg-center bg-white" style={{ backgroundImage: `url(${MOCK_USER.avatarUrl})` }} />
+            <div className="size-32 rounded-[2.5rem] border-8 border-white shadow-xl bg-cover bg-center bg-white" style={{ backgroundImage: `url(${user.avatarUrl})` }} />
             <div className="pb-2">
-              <h2 className="text-3xl font-black font-display text-zinc-900">{MOCK_USER.name}</h2>
-              <p className="text-primary font-bold">{MOCK_USER.title}</p>
+              <h2 className="text-3xl font-black font-display text-zinc-900">{user.name}</h2>
+              <p className="text-primary font-bold">{user.title}</p>
             </div>
           </div>
 
@@ -57,7 +59,7 @@ const ProfileDetailModal: React.FC<ProfileDetailModalProps> = ({ isOpen, onClose
               <section>
                 <h3 className="text-xs font-black uppercase tracking-widest text-zinc-400 mb-4">关于我</h3>
                 <p className="text-zinc-600 leading-relaxed text-sm bg-zinc-50 p-4 rounded-2xl border border-zinc-100">
-                  {MOCK_USER.bio} 目前正专注于极地攀登技术的研究与高海拔影像记录。
+                  {user.bio} 目前正专注于极地攀登技术的研究与高海拔影像记录。
                 </p>
               </section>
             </div>

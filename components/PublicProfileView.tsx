@@ -9,10 +9,11 @@ interface PublicProfileViewProps {
     bio: string;
   };
   onBack: () => void;
+  onAuthRequired: () => void;
   isLoggedIn: boolean;
 }
 
-const PublicProfileView: React.FC<PublicProfileViewProps> = ({ user, onBack, isLoggedIn }) => {
+const PublicProfileView: React.FC<PublicProfileViewProps> = ({ user, onBack, onAuthRequired, isLoggedIn }) => {
   const [isFollowing, setIsFollowing] = useState(false);
 
   const handleFollow = () => {
